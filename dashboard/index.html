@@ -1,0 +1,1822 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Guardrails Engine — Observability Dashboard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: #1a1f35;
+            --bg-card-hover: #1f2545;
+            --bg-detail: #141930;
+            --border: #2a3050;
+            --border-light: #353b5e;
+            --text-primary: #e4e8f7;
+            --text-secondary: #8892b0;
+            --text-muted: #5a6380;
+            --accent-green: #22c55e;
+            --accent-green-dim: rgba(34, 197, 94, 0.15);
+            --accent-red: #ef4444;
+            --accent-red-dim: rgba(239, 68, 68, 0.15);
+            --accent-amber: #f59e0b;
+            --accent-amber-dim: rgba(245, 158, 11, 0.15);
+            --accent-blue: #3b82f6;
+            --accent-blue-dim: rgba(59, 130, 246, 0.15);
+            --accent-purple: #a855f7;
+            --accent-purple-dim: rgba(168, 85, 247, 0.15);
+            --accent-cyan: #06b6d4;
+            --accent-cyan-dim: rgba(6, 182, 212, 0.15);
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-2: linear-gradient(135deg, #22c55e 0%, #059669 100%);
+            --gradient-3: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            --gradient-4: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── Header ───────────────────────────────────────────────── */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo {
+            width: 36px;
+            height: 36px;
+            background: var(--gradient-1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .header h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #e4e8f7, #8892b0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-badge {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            font-weight: 600;
+        }
+
+        .header-version {
+            color: var(--accent-purple);
+            background: var(--accent-purple-dim);
+        }
+
+        .header-provider {
+            color: var(--accent-cyan);
+            background: var(--accent-cyan-dim);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
+            }
+
+            50% {
+                opacity: 0.8;
+                box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+            }
+        }
+
+        .refresh-btn {
+            padding: 0.4rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--accent-blue);
+            color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+
+        .refresh-btn.refreshing {
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+            pointer-events: none;
+        }
+
+        .refresh-btn .spin {
+            display: inline-block;
+            transition: transform 0.5s ease;
+        }
+
+        .refresh-btn.refreshing .spin {
+            animation: spinOnce 0.6s ease;
+        }
+
+        @keyframes spinOnce {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ── Main Layout ──────────────────────────────────────────── */
+        .main {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 1.5rem 2rem 3rem;
+        }
+
+        /* ── Summary Cards ────────────────────────────────────────── */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .summary-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.25rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary-card:hover {
+            background: var(--bg-card-hover);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            border-radius: 16px 16px 0 0;
+        }
+
+        .summary-card.total::before {
+            background: var(--gradient-1);
+        }
+
+        .summary-card.approved::before {
+            background: var(--gradient-2);
+        }
+
+        .summary-card.rejected::before {
+            background: var(--gradient-3);
+        }
+
+        .summary-card.review::before {
+            background: var(--gradient-4);
+        }
+
+        .summary-card.constitution::before {
+            background: linear-gradient(135deg, #a855f7, #7c3aed);
+        }
+
+        .summary-card.hallucination::before {
+            background: linear-gradient(135deg, #06b6d4, #0891b2);
+        }
+
+        .card-label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-value {
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 0.35rem;
+        }
+
+        .card-value.green {
+            color: var(--accent-green);
+        }
+
+        .card-value.red {
+            color: var(--accent-red);
+        }
+
+        .card-value.amber {
+            color: var(--accent-amber);
+        }
+
+        .card-value.blue {
+            color: var(--accent-blue);
+        }
+
+        .card-value.purple {
+            color: var(--accent-purple);
+        }
+
+        .card-value.cyan {
+            color: var(--accent-cyan);
+        }
+
+        .card-sub {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+
+        /* ── Section Title ────────────────────────────────────────── */
+        .section-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* ── Chart Area ───────────────────────────────────────────── */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 900px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+        }
+
+        .chart-card h3 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 1.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* ── Donut Chart ──────────────────────────────────────────── */
+        .donut-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+        }
+
+        .donut-svg {
+            width: 180px;
+            height: 180px;
+            transform: rotate(-90deg);
+        }
+
+        .donut-center-text {
+            font-size: 1.8rem;
+            font-weight: 800;
+            fill: var(--text-primary);
+            text-anchor: middle;
+            dominant-baseline: central;
+            transform: rotate(90deg);
+            transform-origin: center;
+        }
+
+        .donut-center-label {
+            font-size: 0.65rem;
+            fill: var(--text-muted);
+            text-anchor: middle;
+            transform: rotate(90deg);
+            transform-origin: center;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 0.85rem;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .legend-value {
+            font-weight: 700;
+            margin-left: auto;
+            padding-left: 1rem;
+        }
+
+        /* ── Bar Chart ────────────────────────────────────────────── */
+        .bar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .bar-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            width: 160px;
+            flex-shrink: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bar-track {
+            flex: 1;
+            height: 28px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 2px;
+            display: flex;
+            align-items: center;
+            padding-left: 8px;
+        }
+
+        .bar-fill-text {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: white;
+            white-space: nowrap;
+        }
+
+        .bar-fill.green {
+            background: var(--gradient-2);
+        }
+
+        .bar-fill.red {
+            background: var(--gradient-3);
+        }
+
+        .bar-fill.amber {
+            background: var(--gradient-4);
+        }
+
+        .bar-fill.purple {
+            background: linear-gradient(135deg, #a855f7, #7c3aed);
+        }
+
+        .bar-fill.cyan {
+            background: linear-gradient(135deg, #06b6d4, #0891b2);
+        }
+
+        .bar-fill.blue {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+        }
+
+        /* ── Constitution Status ──────────────────────────────────── */
+        .constitution-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.6rem;
+        }
+
+        .principle-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.8rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            transition: all 0.2s;
+        }
+
+        .principle-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .principle-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+
+        .principle-icon.ok {
+            background: var(--accent-green-dim);
+        }
+
+        .principle-icon.violated {
+            background: var(--accent-red-dim);
+        }
+
+        .principle-name {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .principle-status {
+            font-size: 0.7rem;
+            margin-left: auto;
+            font-weight: 600;
+        }
+
+        .principle-status.ok {
+            color: var(--accent-green);
+        }
+
+        .principle-status.violated {
+            color: var(--accent-red);
+        }
+
+        /* ── Test Panel ───────────────────────────────────────────── */
+        .test-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .test-panel h3 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .test-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .test-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .test-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--accent-blue);
+            transform: translateY(-1px);
+        }
+
+        .test-btn:active {
+            transform: translateY(0);
+        }
+
+        .test-btn.running {
+            border-color: var(--accent-amber);
+            color: var(--accent-amber);
+        }
+
+        /* ── Decisions List ───────────────────────────────────────── */
+        .decisions-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .decisions-section h3 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .decision-item {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .decision-item:hover {
+            border-color: var(--border-light);
+        }
+
+        .decision-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.85rem 1.2rem;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.02);
+            transition: background 0.2s;
+            user-select: none;
+        }
+
+        .decision-header:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .decision-time {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            min-width: 70px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .decision-request {
+            flex: 1;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .verdict-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.2rem 0.7rem;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            flex-shrink: 0;
+        }
+
+        .verdict-badge.APPROVED {
+            background: var(--accent-green-dim);
+            color: var(--accent-green);
+        }
+
+        .verdict-badge.REJECTED {
+            background: var(--accent-red-dim);
+            color: var(--accent-red);
+        }
+
+        .verdict-badge.HUMAN_REVIEW {
+            background: var(--accent-amber-dim);
+            color: var(--accent-amber);
+        }
+
+        .decision-trigger-count {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            min-width: 80px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .decision-expand-icon {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            transition: transform 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .decision-item.expanded .decision-expand-icon {
+            transform: rotate(180deg);
+        }
+
+        /* ── Decision Detail Panel ───────────────────────────────── */
+        .decision-detail {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.3s ease;
+            background: var(--bg-detail);
+        }
+
+        .decision-item.expanded .decision-detail {
+            max-height: 2000px;
+            padding: 1.25rem;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+            margin-bottom: 1.25rem;
+        }
+
+        @media (max-width: 768px) {
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .detail-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem;
+        }
+
+        .detail-box-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.3rem 0;
+            font-size: 0.8rem;
+        }
+
+        .detail-label {
+            color: var(--text-muted);
+        }
+
+        .detail-value {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .detail-value.good {
+            color: var(--accent-green);
+        }
+
+        .detail-value.warn {
+            color: var(--accent-amber);
+        }
+
+        .detail-value.bad {
+            color: var(--accent-red);
+        }
+
+        /* ── Confidence / Risk meters ─────────────────────────────── */
+        .meter-container {
+            margin-top: 0.5rem;
+        }
+
+        .meter-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 0.3rem;
+        }
+
+        .meter-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.6s ease;
+        }
+
+        /* ── Reasoning box ─────────────────────────────────────────── */
+        .reasoning-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .reasoning-text {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            font-style: italic;
+        }
+
+        /* ── Guardrail Results list ────────────────────────────────── */
+        .guardrail-results {
+            margin-bottom: 1rem;
+        }
+
+        .guardrail-result-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.65rem 0.85rem;
+            border-radius: 8px;
+            margin-bottom: 0.4rem;
+            transition: background 0.2s;
+        }
+
+        .guardrail-result-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .guardrail-status-icon {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            flex-shrink: 0;
+            margin-top: 0.1rem;
+        }
+
+        .guardrail-status-icon.pass {
+            background: var(--accent-green-dim);
+            color: var(--accent-green);
+        }
+
+        .guardrail-status-icon.fail {
+            background: var(--accent-red-dim);
+            color: var(--accent-red);
+        }
+
+        .guardrail-result-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .guardrail-result-name {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .guardrail-result-reason {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.2rem;
+            line-height: 1.4;
+        }
+
+        .guardrail-severity-badge {
+            font-size: 0.65rem;
+            font-weight: 600;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            flex-shrink: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .severity-low {
+            background: var(--accent-green-dim);
+            color: var(--accent-green);
+        }
+
+        .severity-medium {
+            background: var(--accent-amber-dim);
+            color: var(--accent-amber);
+        }
+
+        .severity-high {
+            background: var(--accent-red-dim);
+            color: var(--accent-red);
+        }
+
+        .severity-critical {
+            background: rgba(239, 68, 68, 0.25);
+            color: #ff6b6b;
+        }
+
+        /* ── Reasons list ──────────────────────────────────────────── */
+        .reasons-box {
+            background: rgba(239, 68, 68, 0.05);
+            border: 1px solid rgba(239, 68, 68, 0.15);
+            border-radius: 10px;
+            padding: 1rem;
+        }
+
+        .reason-item {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            padding: 0.3rem 0;
+            padding-left: 1rem;
+            position: relative;
+            line-height: 1.5;
+        }
+
+        .reason-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.6rem;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--accent-red);
+        }
+
+        /* ── Empty State ──────────────────────────────────────────── */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state .icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .empty-state p {
+            font-size: 0.9rem;
+        }
+
+        /* ── Animations ───────────────────────────────────────────── */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        /* ── Tooltip style ────────────────────────────────────────── */
+        .info-tip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-muted);
+            font-size: 0.6rem;
+            font-weight: 700;
+            cursor: help;
+            margin-left: 0.3rem;
+        }
+
+        /* ── Filter tabs ──────────────────────────────────────────── */
+        .filter-tabs {
+            display: flex;
+            gap: 0.4rem;
+            margin-bottom: 1rem;
+        }
+
+        .filter-tab {
+            padding: 0.35rem 0.85rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .filter-tab:hover {
+            border-color: var(--border-light);
+            color: var(--text-secondary);
+        }
+
+        .filter-tab.active {
+            background: rgba(59, 130, 246, 0.15);
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        /* ── Model Selector ───────────────────────────────────────── */
+        .model-selector-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .model-selector-panel h3 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .model-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .model-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 1.1rem 1.25rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .model-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: var(--border-light);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .model-card.active {
+            border-color: var(--accent-cyan);
+            background: var(--accent-cyan-dim);
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.15);
+        }
+
+        .model-card.switching {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .model-radio {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-light);
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .model-card.active .model-radio {
+            border-color: var(--accent-cyan);
+        }
+
+        .model-radio-inner {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent-cyan);
+            transform: scale(0);
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .model-card.active .model-radio-inner {
+            transform: scale(1);
+        }
+
+        .model-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .model-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.2rem;
+        }
+
+        .model-type {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+
+        .model-badge {
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            flex-shrink: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .model-badge.active-badge {
+            background: var(--accent-cyan-dim);
+            color: var(--accent-cyan);
+        }
+
+        .model-badge.inactive-badge {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-muted);
+        }
+
+        @keyframes switchPulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(6, 182, 212, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(6, 182, 212, 0);
+            }
+        }
+
+        .model-card.just-activated {
+            animation: switchPulse 0.6s ease-out;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ── Header ─────────────────────────────────────────────────────── -->
+    <div class="header">
+        <div class="header-left">
+            <div class="logo">&#x1f6e1;&#xfe0f;</div>
+            <h1>AI Guardrails Engine</h1>
+            <span class="header-badge header-version">v1.0</span>
+            <span class="header-badge header-provider" id="headerProvider">mock-llm</span>
+        </div>
+        <div class="header-right">
+            <div class="status-dot"></div>
+            <button class="refresh-btn" id="refreshBtn" onclick="manualRefresh()">
+                <span class="spin">&#x1f504;</span> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- ── Main Content ───────────────────────────────────────────────── -->
+    <div class="main">
+
+        <!-- Summary Cards -->
+        <div class="summary-grid" id="summaryGrid">
+            <div class="summary-card total">
+                <div class="card-label">Total Decisions</div>
+                <div class="card-value blue" id="totalDecisions">0</div>
+                <div class="card-sub">All processed requests</div>
+            </div>
+            <div class="summary-card approved">
+                <div class="card-label">Approved</div>
+                <div class="card-value green" id="approvedCount">0</div>
+                <div class="card-sub" id="approvalRate">0% approval rate</div>
+            </div>
+            <div class="summary-card rejected">
+                <div class="card-label">Rejected</div>
+                <div class="card-value red" id="rejectedCount">0</div>
+                <div class="card-sub" id="rejectionRate">0% rejection rate</div>
+            </div>
+            <div class="summary-card review">
+                <div class="card-label">Human Review</div>
+                <div class="card-value amber" id="reviewCount">0</div>
+                <div class="card-sub" id="reviewRate">0% review rate</div>
+            </div>
+            <div class="summary-card constitution">
+                <div class="card-label">Constitution Violations</div>
+                <div class="card-value purple" id="constitutionViolations">0</div>
+                <div class="card-sub">Total principle violations</div>
+            </div>
+            <div class="summary-card hallucination">
+                <div class="card-label">Hallucinations Detected</div>
+                <div class="card-value cyan" id="hallucinationCount">0</div>
+                <div class="card-sub">Fabricated data caught</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+            <!-- Verdict Distribution (Donut) -->
+            <div class="chart-card">
+                <h3>Verdict Distribution</h3>
+                <div class="donut-container" id="donutChart">
+                    <div class="empty-state">
+                        <div class="icon">&#x1f4ca;</div>
+                        <p>No decisions yet</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Guardrail Triggers (Bar) -->
+            <div class="chart-card">
+                <h3>Guardrail Trigger Rates</h3>
+                <div class="bar-chart" id="barChart">
+                    <div class="empty-state">
+                        <div class="icon">&#x1f4c8;</div>
+                        <p>No guardrail data yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Constitution Principles Status -->
+        <div class="chart-card">
+            <h3>&#x1f3db;&#xfe0f; Constitutional Principles Status</h3>
+            <div class="constitution-grid" id="constitutionGrid">
+                <div class="empty-state">
+                    <div class="icon">&#x2696;&#xfe0f;</div>
+                    <p>Loading constitution...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- LLM Provider Selector -->
+        <div class="model-selector-panel">
+            <h3>&#x1f916; LLM Provider</h3>
+            <div class="model-grid" id="modelGrid">
+                <div class="empty-state">
+                    <div class="icon">&#x2699;&#xfe0f;</div>
+                    <p>Loading providers...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Test Panel -->
+        <div class="test-panel">
+            <h3>&#x26a1; Quick Test &mdash; Fire Scenarios</h3>
+            <div class="test-buttons" id="testButtons">
+                <button class="test-btn" onclick="fireScenario('credit_application_safe')">&#x2705; Safe
+                    Decision</button>
+                <button class="test-btn" onclick="fireScenario('credit_application_risky')">&#x26a0;&#xfe0f; Risky
+                    Decision</button>
+                <button class="test-btn" onclick="fireScenario('credit_application_biased')">&#x1f6ab; Biased
+                    Decision</button>
+                <button class="test-btn" onclick="fireScenario('credit_application_unexplained')">&#x2753;
+                    Unexplained</button>
+                <button class="test-btn" onclick="fireScenario('insurance_catastrophic')">&#x1f4a5;
+                    Catastrophic</button>
+                <button class="test-btn" onclick="fireScenario('prompt_injection_attempt')">&#x1f513; Prompt
+                    Injection</button>
+                <button class="test-btn" onclick="fireScenario('hallucination_scenario')">&#x1f300;
+                    Hallucination</button>
+                <button class="test-btn" onclick="fireScenario('medical_insurance_subtle_bias')"
+                    style="border-color: var(--accent-cyan); color: var(--accent-cyan);">&#x1f3e5; Medical Bias</button>
+                <button class="test-btn" onclick="fireScenario('sme_loan_borderline_risk')"
+                    style="border-color: var(--accent-amber); color: var(--accent-amber);">&#x1f4bc; SME Risk</button>
+                <button class="test-btn" onclick="fireScenario('real_estate_overconfident')"
+                    style="border-color: var(--accent-red); color: var(--accent-red);">&#x1f3e0; Real Estate
+                    Hallucination</button>
+                <button class="test-btn" onclick="fireScenario('student_loan_manipulative')"
+                    style="border-color: var(--accent-purple); color: var(--accent-purple);">&#x1f393; Student
+                    Injection</button>
+                <button class="test-btn" onclick="fireScenario('corporate_credit_proper')"
+                    style="border-color: var(--accent-green); color: var(--accent-green);">&#x1f3e2; Corporate
+                    Proper</button>
+                <button class="test-btn" onclick="fireScenario('multilingual_injection')"
+                    style="border-color: var(--accent-red); color: var(--accent-red);">&#x1f30d; Multilingual
+                    Injection</button>
+                <button class="test-btn" onclick="fireScenario('structural_injection')"
+                    style="border-color: var(--accent-red); color: var(--accent-red);">&#x1f4dd; Structural
+                    Injection</button>
+                <button class="test-btn" onclick="fireAllScenarios()"
+                    style="border-color: var(--accent-purple); color: var(--accent-purple); font-weight:700;">&#x1f680;
+                    Run All (14)</button>
+            </div>
+        </div>
+
+        <!-- Recent Decisions with Expandable Detail -->
+        <div class="decisions-section">
+            <h3>&#x1f4cb; Recent Decisions <span class="info-tip"
+                    title="Click any row to expand and see full details">?</span></h3>
+
+            <!-- Filter tabs -->
+            <div class="filter-tabs">
+                <button class="filter-tab active" onclick="filterDecisions('ALL', this)">All</button>
+                <button class="filter-tab" onclick="filterDecisions('APPROVED', this)">Approved</button>
+                <button class="filter-tab" onclick="filterDecisions('REJECTED', this)">Rejected</button>
+                <button class="filter-tab" onclick="filterDecisions('HUMAN_REVIEW', this)">Human Review</button>
+            </div>
+
+            <div id="decisionsContainer">
+                <div class="empty-state">
+                    <div class="icon">&#x1f4dd;</div>
+                    <p>No decisions recorded yet. Use the test panel above to fire scenarios.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let allDecisions = [];
+        let currentFilter = 'ALL';
+
+        // ── Fetch Metrics ────────────────────────────────────────────
+        async function fetchMetrics() {
+            try {
+                const res = await fetch(`${API_BASE}/api/metrics`);
+                const data = await res.json();
+                updateDashboard(data);
+            } catch (e) {
+                console.error('Failed to fetch metrics:', e);
+            }
+        }
+
+        // ── Fetch LLM Provider Info ──────────────────────────────────
+        let currentProviders = [];
+        let currentDefault = '';
+
+        async function fetchProviderInfo() {
+            try {
+                const res = await fetch(`${API_BASE}/api/llm/providers`);
+                const data = await res.json();
+                currentProviders = data.providers || [];
+                currentDefault = data.default || 'unknown';
+                document.getElementById('headerProvider').textContent = currentDefault;
+                renderModelSelector();
+            } catch (e) { /* silent */ }
+        }
+
+        // ── Render Model Selector ────────────────────────────────────
+        function renderModelSelector() {
+            const container = document.getElementById('modelGrid');
+            if (currentProviders.length === 0) {
+                container.innerHTML = `<div class="empty-state"><div class="icon">&#x2699;&#xfe0f;</div><p>No providers registered.</p></div>`;
+                return;
+            }
+
+            container.innerHTML = currentProviders.map(p => {
+                const isActive = p.is_default;
+                const activeClass = isActive ? 'active' : '';
+                const badgeClass = isActive ? 'active-badge' : 'inactive-badge';
+                const badgeText = isActive ? 'Active' : 'Available';
+
+                return `
+                <div class="model-card ${activeClass}" onclick="switchProvider('${p.name}')" id="model-${p.name}">
+                    <div class="model-radio">
+                        <div class="model-radio-inner"></div>
+                    </div>
+                    <div class="model-info">
+                        <div class="model-name">${escHtml(p.name)}</div>
+                        <div class="model-type">${escHtml(p.type)}</div>
+                    </div>
+                    <span class="model-badge ${badgeClass}">${badgeText}</span>
+                </div>
+                `;
+            }).join('');
+        }
+
+        // ── Switch Provider ──────────────────────────────────────────
+        async function switchProvider(name) {
+            if (name === currentDefault) return;
+
+            // Mark the card as switching
+            const card = document.getElementById(`model-${name}`);
+            if (card) card.classList.add('switching');
+
+            try {
+                const res = await fetch(`${API_BASE}/api/llm/provider/${name}/activate`, {
+                    method: 'POST',
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    console.error('Failed to switch provider:', err.detail);
+                    return;
+                }
+
+                // Refresh provider list
+                await fetchProviderInfo();
+
+                // Animate the newly activated card
+                const newCard = document.getElementById(`model-${name}`);
+                if (newCard) {
+                    newCard.classList.add('just-activated');
+                    setTimeout(() => newCard.classList.remove('just-activated'), 600);
+                }
+            } catch (e) {
+                console.error('Provider switch failed:', e);
+            } finally {
+                if (card) card.classList.remove('switching');
+            }
+        }
+
+        // ── Manual Refresh ───────────────────────────────────────────
+        async function manualRefresh() {
+            const btn = document.getElementById('refreshBtn');
+            btn.classList.add('refreshing');
+            btn.querySelector('.spin').textContent = '\u23f3';
+            await fetchMetrics();
+            await fetchProviderInfo();
+            setTimeout(() => {
+                btn.classList.remove('refreshing');
+                btn.querySelector('.spin').textContent = '\ud83d\udd04';
+            }, 500);
+        }
+
+        // ── Update Dashboard ─────────────────────────────────────────
+        function updateDashboard(m) {
+            // Summary cards
+            document.getElementById('totalDecisions').textContent = m.total_decisions;
+            document.getElementById('approvedCount').textContent = m.verdict_distribution.APPROVED || 0;
+            document.getElementById('rejectedCount').textContent = m.verdict_distribution.REJECTED || 0;
+            document.getElementById('reviewCount').textContent = m.verdict_distribution.HUMAN_REVIEW || 0;
+            document.getElementById('approvalRate').textContent = `${(m.approval_rate * 100).toFixed(1)}% approval rate`;
+            document.getElementById('rejectionRate').textContent = `${(m.rejection_rate * 100).toFixed(1)}% rejection rate`;
+            document.getElementById('reviewRate').textContent = `${(m.human_review_rate * 100).toFixed(1)}% review rate`;
+            document.getElementById('constitutionViolations').textContent = m.total_constitution_violations || 0;
+            document.getElementById('hallucinationCount').textContent = m.hallucination_detections || 0;
+
+            // Donut chart
+            if (m.total_decisions > 0) renderDonut(m.verdict_distribution, m.total_decisions);
+
+            // Bar chart
+            if (Object.keys(m.guardrail_stats).length > 0) renderBars(m.guardrail_stats);
+
+            // Constitution
+            renderConstitution(m.constitution_violations);
+
+            // Decisions
+            allDecisions = m.recent_decisions || [];
+            renderDecisions();
+        }
+
+        // ── Donut Chart ──────────────────────────────────────────────
+        function renderDonut(dist, total) {
+            const container = document.getElementById('donutChart');
+            const approved = dist.APPROVED || 0;
+            const rejected = dist.REJECTED || 0;
+            const review = dist.HUMAN_REVIEW || 0;
+
+            const r = 70, cx = 90, cy = 90;
+            const circumference = 2 * Math.PI * r;
+
+            const segments = [
+                { value: approved, color: '#22c55e', label: 'Approved' },
+                { value: review, color: '#f59e0b', label: 'Human Review' },
+                { value: rejected, color: '#ef4444', label: 'Rejected' },
+            ];
+
+            let offset = 0;
+            let paths = '';
+            segments.forEach(seg => {
+                const pct = seg.value / total;
+                const dash = pct * circumference;
+                paths += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${seg.color}" 
+                       stroke-width="16" stroke-dasharray="${dash} ${circumference - dash}" 
+                       stroke-dashoffset="${-offset}" stroke-linecap="round"
+                       style="transition: all 0.8s ease"/>`;
+                offset += dash;
+            });
+
+            const legendItems = segments.map(s => {
+                const pct = ((s.value / total) * 100).toFixed(1);
+                return `<div class="legend-item">
+                    <div class="legend-dot" style="background:${s.color}"></div>
+                    <span>${s.label}</span>
+                    <span class="legend-value">${s.value} (${pct}%)</span>
+                </div>`;
+            }).join('');
+
+            container.innerHTML = `
+            <svg class="donut-svg" viewBox="0 0 180 180">
+                <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="16"/>
+                ${paths}
+                <text class="donut-center-text" x="${cx}" y="${cy - 6}">${total}</text>
+                <text class="donut-center-label" x="${cx}" y="${cy + 14}">Total</text>
+            </svg>
+            <div class="legend">${legendItems}</div>
+        `;
+        }
+
+        // ── Bar Chart ────────────────────────────────────────────────
+        function renderBars(stats) {
+            const container = document.getElementById('barChart');
+            const entries = Object.entries(stats).sort((a, b) => b[1].triggers - a[1].triggers);
+            const maxTriggers = Math.max(...entries.map(([, s]) => s.total_checks), 1);
+
+            const colors = {
+                'ExplainabilityGuardrail': 'blue',
+                'RiskGuardrail': 'red',
+                'RegulationGuardrail': 'amber',
+                'FairnessGuardrail': 'purple',
+                'PromptInjectionGuardrail': 'red',
+                'HallucinationGuardrail': 'cyan',
+            };
+
+            container.innerHTML = entries.map(([name, s]) => {
+                const displayName = name.replace('Guardrail', '').replace('Constitution:', '\ud83c\udfdb\ufe0f ');
+                const triggerPct = (s.triggers / maxTriggers) * 100;
+                const passPct = (s.passes / maxTriggers) * 100;
+                const color = colors[name] || 'blue';
+
+                return `
+                <div class="bar-row slide-in">
+                    <div class="bar-label" title="${name}">${displayName}</div>
+                    <div class="bar-track">
+                        <div class="bar-fill green" style="width:${passPct}%">
+                            <span class="bar-fill-text">${s.passes} pass</span>
+                        </div>
+                    </div>
+                    <div class="bar-track" style="max-width:40%">
+                        <div class="bar-fill ${color}" style="width:${Math.max(triggerPct, s.triggers > 0 ? 15 : 0)}%">
+                            <span class="bar-fill-text">${s.triggers} fail</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            }).join('');
+        }
+
+        // ── Constitution Status ──────────────────────────────────────
+        const principleNames = {
+            'Non-Discrimination': '\u2696\ufe0f', 'Decision Transparency': '\ud83d\udd0d',
+            'Harm Prevention': '\ud83d\udee1\ufe0f', 'Decision Accountability': '\ud83d\udccb',
+            'Manipulation Resistance': '\ud83d\udd12', 'Legal and Regulatory Compliance': '\ud83d\udcdc',
+            'Uncertainty Escalation': '\u2753', 'Proportional Decision Making': '\u2696\ufe0f',
+            'Human-in-the-Loop': '\ud83d\udc64', 'Robustness Against Edge Cases': '\ud83e\uddea',
+            'System Transparency': '\ud83d\udd13',
+        };
+
+        const defaultPrinciples = [
+            'Non-Discrimination', 'Decision Transparency', 'Harm Prevention',
+            'Decision Accountability', 'Manipulation Resistance',
+            'Legal and Regulatory Compliance', 'Uncertainty Escalation',
+            'Proportional Decision Making', 'Human-in-the-Loop',
+            'Robustness Against Edge Cases', 'System Transparency'
+        ];
+
+        function renderConstitution(violations) {
+            const container = document.getElementById('constitutionGrid');
+            const violatedSet = new Set(Object.keys(violations || {}));
+
+            container.innerHTML = defaultPrinciples.map(name => {
+                const isViolated = violatedSet.has(name);
+                const count = violations?.[name] || 0;
+                const icon = principleNames[name] || '\ud83d\udccc';
+                const statusClass = isViolated ? 'violated' : 'ok';
+                const statusText = isViolated ? `${count} violations` : 'Compliant';
+                const statusIcon = isViolated ? '\u274c' : '\u2705';
+
+                return `
+                <div class="principle-card">
+                    <div class="principle-icon ${statusClass}">${icon}</div>
+                    <div class="principle-name">${name}</div>
+                    <div class="principle-status ${statusClass}">${statusIcon} ${statusText}</div>
+                </div>
+            `;
+            }).join('');
+        }
+
+        // ── Filter Decisions ─────────────────────────────────────────
+        function filterDecisions(filter, tabEl) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+            if (tabEl) tabEl.classList.add('active');
+            renderDecisions();
+        }
+
+        // ── Render Decisions ─────────────────────────────────────────
+        function renderDecisions() {
+            const container = document.getElementById('decisionsContainer');
+            let filtered = allDecisions;
+            if (currentFilter !== 'ALL') {
+                filtered = allDecisions.filter(d => d.verdict === currentFilter);
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="empty-state"><div class="icon">\ud83d\udcdd</div><p>No decisions to display.</p></div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map((d, idx) => {
+                const time = new Date(d.timestamp).toLocaleTimeString();
+                const verdictIcon = d.verdict === 'APPROVED' ? '\u2705' : d.verdict === 'REJECTED' ? '\u274c' : '\u26a0\ufe0f';
+                const triggerText = d.triggered_count > 0 ? `${d.triggered_count} triggered` : 'All passed';
+
+                return `
+                <div class="decision-item fade-in" id="decision-${idx}">
+                    <div class="decision-header" onclick="toggleDecision(${idx})">
+                        <span class="decision-time">${time}</span>
+                        <span class="decision-request" title="${escHtml(d.request)}">${escHtml(d.request)}</span>
+                        <span class="verdict-badge ${d.verdict}">${verdictIcon} ${d.verdict}</span>
+                        <span class="decision-trigger-count">${triggerText}</span>
+                        <span class="decision-expand-icon">\u25bc</span>
+                    </div>
+                    <div class="decision-detail">
+                        ${renderDecisionDetail(d)}
+                    </div>
+                </div>
+            `;
+            }).join('');
+        }
+
+        // ── Toggle Decision Detail ───────────────────────────────────
+        function toggleDecision(idx) {
+            const el = document.getElementById(`decision-${idx}`);
+            el.classList.toggle('expanded');
+        }
+
+        // ── Render Decision Detail ───────────────────────────────────
+        function renderDecisionDetail(d) {
+            const rec = d.recommendation || {};
+            const outcomes = d.guardrail_outcomes || [];
+            const reasons = d.reasons || [];
+
+            // Confidence color
+            const confPct = ((rec.confidence || 0) * 100).toFixed(0);
+            const confClass = rec.confidence >= 0.7 ? 'good' : rec.confidence >= 0.4 ? 'warn' : 'bad';
+            const confColor = rec.confidence >= 0.7 ? '#22c55e' : rec.confidence >= 0.4 ? '#f59e0b' : '#ef4444';
+
+            // Risk color
+            const riskPct = ((rec.risk_score || 0) * 100).toFixed(0);
+            const riskClass = rec.risk_score <= 0.3 ? 'good' : rec.risk_score <= 0.6 ? 'warn' : 'bad';
+            const riskColor = rec.risk_score <= 0.3 ? '#22c55e' : rec.risk_score <= 0.6 ? '#f59e0b' : '#ef4444';
+
+            // Guardrail results
+            const guardrailHtml = outcomes.map(o => {
+                const icon = o.passed ? '\u2705' : '\u274c';
+                const iconClass = o.passed ? 'pass' : 'fail';
+                const sevClass = `severity-${o.severity || 'medium'}`;
+                const reasonText = o.reason ? `<div class="guardrail-result-reason">${escHtml(o.reason)}</div>` : '';
+                const scorePart = (o.score !== null && o.score !== undefined) ? ` &middot; Score: ${o.score.toFixed(2)}` : '';
+
+                return `
+                <div class="guardrail-result-item">
+                    <div class="guardrail-status-icon ${iconClass}">${icon}</div>
+                    <div class="guardrail-result-info">
+                        <div class="guardrail-result-name">${escHtml(o.name)}${scorePart}</div>
+                        ${reasonText}
+                    </div>
+                    <span class="guardrail-severity-badge ${sevClass}">${o.severity || 'medium'}</span>
+                </div>
+            `;
+            }).join('');
+
+            // Reasons
+            const reasonsHtml = reasons.length > 0 ? `
+                <div class="reasons-box">
+                    <div class="detail-box-title">\u26a0\ufe0f Failure Reasons</div>
+                    ${reasons.map(r => `<div class="reason-item">${escHtml(r)}</div>`).join('')}
+                </div>
+            ` : '';
+
+            return `
+                <!-- Recommendation Summary -->
+                <div class="detail-grid">
+                    <div class="detail-box">
+                        <div class="detail-box-title">\ud83e\udd16 AI Recommendation</div>
+                        <div class="detail-row">
+                            <span class="detail-label">Decision</span>
+                            <span class="detail-value">${escHtml(rec.decision || 'N/A')}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Risk Category</span>
+                            <span class="detail-value">${escHtml(rec.risk_category || 'general')}</span>
+                        </div>
+                        <div class="meter-container">
+                            <div class="detail-row">
+                                <span class="detail-label">Confidence</span>
+                                <span class="detail-value ${confClass}">${confPct}%</span>
+                            </div>
+                            <div class="meter-bar">
+                                <div class="meter-fill" style="width:${confPct}%; background:${confColor}"></div>
+                            </div>
+                        </div>
+                        <div class="meter-container">
+                            <div class="detail-row">
+                                <span class="detail-label">Risk Score</span>
+                                <span class="detail-value ${riskClass}">${riskPct}%</span>
+                            </div>
+                            <div class="meter-bar">
+                                <div class="meter-fill" style="width:${riskPct}%; background:${riskColor}"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="detail-box">
+                        <div class="detail-box-title">\ud83d\udcca Quick Stats</div>
+                        <div class="detail-row">
+                            <span class="detail-label">Total Guardrails</span>
+                            <span class="detail-value">${outcomes.length}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Passed</span>
+                            <span class="detail-value good">${outcomes.filter(o => o.passed).length}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Failed</span>
+                            <span class="detail-value ${outcomes.filter(o => !o.passed).length > 0 ? 'bad' : 'good'}">${outcomes.filter(o => !o.passed).length}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Audit ID</span>
+                            <span class="detail-value" style="font-size:0.7rem; color:var(--text-muted)">${d.audit_id || 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Reasoning -->
+                <div class="reasoning-box">
+                    <div class="detail-box-title">\ud83d\udcac AI Reasoning</div>
+                    <div class="reasoning-text">"${escHtml(rec.reasoning || 'No reasoning provided.')}"</div>
+                </div>
+
+                <!-- Guardrail Results -->
+                <div class="detail-box" style="margin-bottom:1.25rem">
+                    <div class="detail-box-title">\ud83d\udee1\ufe0f Guardrail Results (${outcomes.length})</div>
+                    <div class="guardrail-results">
+                        ${guardrailHtml || '<div style="color:var(--text-muted); font-size:0.8rem; padding:0.5rem">No guardrail data available.</div>'}
+                    </div>
+                </div>
+
+                <!-- Reasons -->
+                ${reasonsHtml}
+            `;
+        }
+
+        // ── HTML escape ──────────────────────────────────────────────
+        function escHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // ── Fire Scenario ────────────────────────────────────────────
+        async function fireScenario(scenario) {
+            const btn = event?.target;
+            if (btn) { btn.classList.add('running'); btn.textContent = '\u23f3 Running...'; }
+
+            try {
+                await fetch(`${API_BASE}/api/decision`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        request: `Test scenario: ${scenario}`,
+                        scenario: scenario,
+                    }),
+                });
+                await fetchMetrics();
+            } catch (e) {
+                console.error('Failed to fire scenario:', e);
+            }
+
+            if (btn) {
+                btn.classList.remove('running');
+                btn.textContent = btn.getAttribute('data-original') || '\u2705 Done';
+            }
+        }
+
+        async function fireAllScenarios() {
+            const btn = event?.target;
+            if (btn) { btn.classList.add('running'); btn.textContent = '\u23f3 Running All...'; }
+
+            const scenarios = [
+                'credit_application_safe', 'credit_application_risky',
+                'credit_application_biased', 'credit_application_unexplained',
+                'insurance_catastrophic', 'prompt_injection_attempt',
+                'hallucination_scenario',
+                'medical_insurance_subtle_bias', 'sme_loan_borderline_risk',
+                'real_estate_overconfident', 'student_loan_manipulative',
+                'corporate_credit_proper',
+                'multilingual_injection', 'structural_injection'
+            ];
+            for (const s of scenarios) {
+                await fetch(`${API_BASE}/api/decision`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ request: `Test: ${s}`, scenario: s }),
+                });
+            }
+            await fetchMetrics();
+
+            if (btn) {
+                btn.classList.remove('running');
+                btn.textContent = btn.getAttribute('data-original') || '\ud83d\ude80 Run All';
+            }
+        }
+
+        // ── Init ─────────────────────────────────────────────────────
+        document.querySelectorAll('.test-btn').forEach(btn => {
+            btn.setAttribute('data-original', btn.textContent);
+        });
+
+        fetchMetrics();
+        fetchProviderInfo();
+        renderConstitution({});
+    </script>
+
+</body>
+
+</html>

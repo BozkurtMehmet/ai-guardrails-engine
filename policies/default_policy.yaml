@@ -1,0 +1,73 @@
+# =============================================================================
+# AI Guardrails Engine — Default Policy Configuration
+# =============================================================================
+# This YAML file defines the policy-as-code rules that govern AI decision
+# guardrails. Modify thresholds and rules here without changing application code.
+# =============================================================================
+
+explainability:
+  # Minimum character length for AI reasoning
+  min_reasoning_length: 30
+  # Fields that must be present and non-empty in the AI recommendation
+  required_fields:
+    - decision
+    - confidence
+    - reasoning
+  # Minimum confidence score for the AI to be considered explainable
+  min_confidence: 0.3
+
+risk:
+  # Maximum allowable risk score (0.0 - 1.0). Above this → reject or human review
+  max_risk_score: 0.85
+  # Risk categories that trigger immediate rejection
+  forbidden_categories:
+    - catastrophic
+    - uninsurable
+    - life_threatening
+  # Risk score above which human review is required (even if below max)
+  human_review_threshold: 0.7
+
+regulation:
+  # Terms in AI output that violate regulatory requirements
+  blocked_terms:
+    - guaranteed returns
+    - no risk involved
+  # Regulatory frameworks to check against
+  applicable_frameworks:
+    - GDPR
+    - ECOA
+    - FCRA
+
+fairness:
+  # Maximum acceptable disparity between demographic groups (0.0 - 1.0)
+  max_demographic_disparity: 0.20
+  # Attributes that must not influence the decision
+  protected_attributes:
+    - race
+    - gender
+    - age
+    - religion
+    - disability
+    - national_origin
+  # Minimum approval rate for any demographic group
+  min_group_approval_rate: 0.5
+
+prompt_injection:
+  # Patterns that indicate prompt injection attempts
+  suspicious_patterns:
+    - "ignore previous instructions"
+    - "act as system"
+    - "bypass safety"
+    - "override guardrails"
+    - "disregard all rules"
+    - "pretend you are"
+
+hallucination:
+  # Maximum fabrication score before flagging (0.0 - 1.0)
+  max_fabrication_score: 0.75
+  # Maximum contradiction score before flagging (0.0 - 1.0)
+  max_contradiction_score: 0.5
+  # Minimum word count for high-confidence recommendations
+  min_words_for_high_confidence: 15
+  # Maximum word count for low-confidence recommendations
+  max_words_for_low_confidence: 100

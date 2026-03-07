@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  guardrails-engine:
+    build: .
+    container_name: ai-guardrails-engine
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./policies:/app/policies
+      - ./constitution:/app/constitution
+      - ./audit:/app/audit
+    restart: unless-stopped
+    

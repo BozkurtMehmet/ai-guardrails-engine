@@ -1,0 +1,52 @@
+# AI Guardrails Engine
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Audit Logs (runtime-generated, do not push)
+audit/logs/*.json
+
+# Test / Coverage
+.pytest_cache/
+htmlcov/
+.coverage
+*.cover
+
+# Environment variables
+.env
+.env.local
+
+# Test Results
+test_results.txt
+test_output.txt
+
+# Openrouter
+run_with_openrouter.py
+tests/test_openrouter_live.py
+app/llm/openrouter_provider.py
+
